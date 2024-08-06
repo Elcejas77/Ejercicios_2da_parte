@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -40,7 +42,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -48,14 +49,60 @@ UART_HandleTypeDef huart2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+//Variables: Se definen las variables a utilizar en la aplicacion.
+//tiempo: se toma una copia del reloj del sistema para usos practicos y definir ventanas de lectura
+uint32_t tiempo_parpadeo=500;
+uint8_t estado=0;
+static uint32_t tiempo=HAL_GetTick;
+uint8_t contador=0;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+// Se definen las interrupciones y lo que debe realizar el sistema al tenerlas,como definir valores a las variables anteriormente definidas
+// Utilizamos 2 botones Izquierda-Derecha,a los cuales les asignamos unas funcionalidades en caso,
+//de que ocurran, del mismo modo se transmite un mensaje a travez de la UART que indica que boton se presiono
+	 if(GPIO_Pin==Izquierda_Pin)
+		  {HAL_UART_Transmit(&huart2, "d_izquierda\r\n", 13, 10);
+		  HAL_GPIO_WritePin(LD_GPIO_Port, LI_Pin, 0);
+		  estado=1;
+		  contador =3;
+		 }
+	 if(GPIO_Pin==Derecha_Pin)
+		   {HAL_UART_Transmit(&huart2, "d_derecha\r\n", 13, 10);
+		    HAL_GPIO_WritePin(LD_GPIO_Port, LD_Pin, 0);
+		   estado=2;
+		   contador =3;
+		   }
+
+
+//Filtro para evitar los rebotes al momento de presionar los botones y que el sistema no los tome
+// En las mismas lineas de codigo de implementa el que si se presiona 2 veces en menos de 500 ms,
+//la luz parpadee indefinidamente.
+
+	 if (GPIO_Pin == Izquierda_Pin) {
+
+		if ((HAL_GetTick() < (tiempo + 500))&&(HAL_GetTick() > (tiempo + 150))) { //se define una ventana de 150 ms donde el sistema no lea el boton
+					contador = 0xFFFFFF; // contador con un numero exageradamente grande para el parpadeo
+				} else {
+					contador = 5;
+				}
+				tiempo = HAL_GetTick();
+			}
+	if (GPIO_Pin == Derecha_Pin) {
+				if ((HAL_GetTick() < (tiempo + 500))&&(HAL_GetTick() > (tiempo + 150))) { //
+					contador = 0xFFFFFF;
+				} else {
+					contador = 5;
+				}
+				tiempo = HAL_GetTick();
+
+			}
+}
 
 /* USER CODE END 0 */
 
@@ -98,6 +145,43 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
+	//Al ocurrir alguna de las 2 posiboles interrupciones en el sistema ,el sistema nos redirige a 2 posibles estados a aplicar,
+	//donde si se presiona el boton Derecha(S3) entraremos al estado 1 o el boton Izquierda(S1) ,donde en cualquiera de los 2
+	// se realiza un bucle para que las luces cambien su estado el numero de veces que la variable contador nos lo indique,
+	// del mismo modo aseguramos el correcto funcionamiento del codigo apagando los otros componentes que no se utilizaran en ese momento
+
+
+	  if (estado==2){//estado correspondiente a presionar el boton Derecha(s1)
+	  	   		if((HAL_GetTick()-tiempo)>tiempo_parpadeo){
+	  	   			HAL_GPIO_WritePin(LI_GPIO_Port, LI_Pin, 1);//Apagala luz izquierda
+	  	   			HAL_UART_Transmit(&huart2, "d_derecha\r\n", 13, 10);//transmite la informacion de que se esta girando a la derecha
+	  	   			HAL_GPIO_TogglePin(LD_GPIO_Port, LD_Pin);//cambia el estado de la luz derecha
+	  	   			tiempo=HAL_GetTick();
+	  	   			contador--;
+	  	   			if ((contador==0)){
+	  	   				estado=0;
+	  	   			 HAL_GPIO_WritePin(LD_GPIO_Port, LD_Pin, 1);
+
+	  	   			}
+
+	  	   		}
+	  	   		}
+
+	  	if (estado==1){//estado correspondiente a presionar el boton Izquierda(s3)
+	  		if((HAL_GetTick()-tiempo)>tiempo_parpadeo){
+	  			HAL_UART_Transmit(&huart2, "d_izquierda\r\n", 13, 10);//transmite la informacion de que se esta girando a la izquierda
+	  			HAL_GPIO_WritePin(LD_GPIO_Port, LD_Pin, 1);//Apagala luz derecha
+	  			HAL_GPIO_TogglePin(LI_GPIO_Port, LI_Pin);//cambia el estado de la luz derecha
+	  			tiempo=HAL_GetTick();
+	  			contador--;
+	  			if ((contador==0)){
+	  				estado=0;
+	  				  HAL_GPIO_WritePin(GPIOA, LI_Pin, 1);
+
+	  			}
+
+	  		 }
+	  	   }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -145,89 +229,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LI_Pin|LD_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : Izquierda_Pin */
-  GPIO_InitStruct.Pin = Izquierda_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Izquierda_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LI_Pin LD_Pin */
-  GPIO_InitStruct.Pin = LI_Pin|LD_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : Derecha_Pin */
-  GPIO_InitStruct.Pin = Derecha_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Derecha_GPIO_Port, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
