@@ -1,12 +1,15 @@
 #include "ring_buffer.h"
 
-#define capacity (10) // capacidad del buffer
-uint8_t ring_buffer[capacity]; // buffer
-uint8_t head_ptr = 0; // cabeza del buffer
-uint8_t tail_ptr = 0; // cola del buffer
-uint8_t is_full = 0; // indicador de buffer lleno
+void ring_buffer_init(ring_buffer_t *rb,uint8_t *mem,uint8_t *cap)
+{
+	rb->buffer=mem_add;
+	rb->capacity=cap;
 
-void ring_buffer_reset(void) {
+	ring_buffer_reset();
+
+
+}
+void ring_buffer_reset(ring) {
     head_ptr = 0;
     tail_ptr = 0;
     is_full = 0;
