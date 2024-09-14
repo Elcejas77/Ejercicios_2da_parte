@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <math.h>
 
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
@@ -60,6 +61,8 @@ ring_buffer_t keypad_rb;
 uint8_t usart2_data = 0xFF;
 uint8_t usart2_buffer[USART2_RB_LEN];
 ring_buffer_t usart2_rb;
+
+volatile uint8_t b1_pressed = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,12 +99,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == B1_Pin) {
-
+		b1_pressed = 1;
 		return;
 	}
 	uint8_t key_pressed = keypad_scan(GPIO_Pin);
 	if (key_pressed != 0xFF) {
-		ring_buffer_write(&keypad_rb, keypad_data);
+		ring_buffer_write(&keypad_rb, key_pressed);
 		if (ring_buffer_is_full(&keypad_rb) != 0) {
 
 		}
@@ -167,6 +170,30 @@ int main(void)
 			ssd1306_WriteString(&usart2_data, Font_11x18, White);
 			ssd1306_UpdateScreen();
 			usart2_data = 0xFF;
+		}
+
+		if (b1_pressed != 0) {
+			uint32_t usart2_value = 0;
+			uint32_t keypad_value = 0;
+			uint8_t digit = 0;
+			while (ring_buffer_is_empty(&usart2_rb) == 0) {
+				ring_buffer_read(&usart2_rb, &digit);
+				usart2_value += (digit - '0') * pow(10, ring_buffer_size(&usart2_rb));
+			}
+			while (ring_buffer_is_empty(&keypad_rb) == 0) {
+				ring_buffer_read(&keypad_rb, &digit);
+				keypad_value += (digit - '0') * pow(10, ring_buffer_size(&keypad_rb));
+			}
+			uint32_t sum = usart2_value + keypad_value;
+			char sum_str[10];
+			sprintf(sum_str, "%d", sum);
+			printf("%ld - %ld = %s\r\n", usart2_value, keypad_value, sum_str);
+
+			ssd1306_Fill(Black);
+			ssd1306_SetCursor(30, 30);
+			ssd1306_WriteString(sum_str, Font_11x18, White);
+			ssd1306_UpdateScreen();
+			b1_pressed = 0;
 		}
     /* USER CODE END WHILE */
 
