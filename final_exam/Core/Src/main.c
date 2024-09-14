@@ -56,7 +56,7 @@ uint8_t keypad_data = 0xFF;
 uint8_t keypad_buffer[KEYPAD_RB_LEN];
 ring_buffer_t keypad_rb;
 
-#define USART2_RB_LEN 4
+#define USART2_RB_LEN 6
 uint8_t usart2_data = 0xFF;
 uint8_t usart2_buffer[USART2_RB_LEN];
 ring_buffer_t usart2_rb;
@@ -147,6 +147,8 @@ int main(void)
   ssd1306_WriteString("Welcome!", Font_7x10, White);
   ssd1306_UpdateScreen();
 
+  ring_buffer_init(&usart2_rb, usart2_buffer, USART2_RB_LEN);
+  ring_buffer_init(&keypad_rb, keypad_buffer, KEYPAD_RB_LEN);
   HAL_UART_Receive_IT(&huart2, &usart2_data, 1);
   /* USER CODE END 2 */
 
