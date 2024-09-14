@@ -105,6 +105,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if (ring_buffer_is_full(&keypad_rb) != 0) {
 
 		}
+		keypad_data = key_pressed;
 	}
 }
 /* USER CODE END 0 */
@@ -143,8 +144,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   ssd1306_Init();
   ssd1306_Fill(Black);
-  ssd1306_SetCursor(20, 20);
-  ssd1306_WriteString("Welcome!", Font_7x10, White);
   ssd1306_UpdateScreen();
 
   ring_buffer_init(&usart2_rb, usart2_buffer, USART2_RB_LEN);
@@ -157,6 +156,18 @@ int main(void)
   printf("Starting\r\n");
   while (1)
   {
+		if (keypad_data != 0xFF) {
+			ssd1306_SetCursor(20, 20);
+			ssd1306_WriteString(&keypad_data, Font_11x18, White);
+			ssd1306_UpdateScreen();
+			keypad_data = 0xFF;
+		}
+		if (usart2_data != 0xFF) {
+			ssd1306_SetCursor(20, 40);
+			ssd1306_WriteString(&usart2_data, Font_11x18, White);
+			ssd1306_UpdateScreen();
+			usart2_data = 0xFF;
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
