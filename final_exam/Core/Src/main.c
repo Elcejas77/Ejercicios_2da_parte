@@ -104,7 +104,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 	uint8_t key_pressed = keypad_scan(GPIO_Pin);
 	if (key_pressed != 0xFF) {
-		ring_buffer_write(&keypad_rb, key_pressed);
+		if (key_pressed == '#') {
+			ring_buffer_reset(&usart2_rb);
+		} else if (key_pressed == '*') {
+			ring_buffer_reset(&keypad_rb);
+		} else {
+			ring_buffer_write(&keypad_rb, key_pressed);
+		}
 		if (ring_buffer_is_full(&keypad_rb) != 0) {
 
 		}
