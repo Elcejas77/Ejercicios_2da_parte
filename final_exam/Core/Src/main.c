@@ -191,6 +191,11 @@ int main(void)
 				keypad_value += (digit - '0') * pow(10, ring_buffer_size(&keypad_rb));
 			}
 			uint32_t sum = usart2_value + keypad_value;
+			if ((sum % 2) == 0) { // par
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 1);
+			} else { // impar
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, 0);
+			}
 			char sum_str[10];
 			sprintf(sum_str, "%d", sum);
 			printf("%ld - %ld = %s\r\n", usart2_value, keypad_value, sum_str);
