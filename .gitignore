@@ -1,0 +1,29 @@
+# STM32CubeIDE / Eclipse build artifacts
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+*.bin
+*.hex
+*.axf
+*.lst
+*.lnp
+
+# Eclipse project settings (generated)
+.settings/
+.cproject
+.mxproject
+.project
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
